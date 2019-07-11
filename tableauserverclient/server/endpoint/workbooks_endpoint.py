@@ -334,8 +334,7 @@ class Workbooks(Endpoint):
                                                                         filename,
                                                                         workbook_string,
                                                                         connection_credentials)
-        with open("filexml_stable.txt", 'r') as f:
-            xml_request = f.read()
+
         server_response = self.post_request(url, xml_request, content_type)
         assert False, (server_response, '----', url, '----', self.parent_srv.auth_token, '----', content_type)
         new_workbook = WorkbookItem.from_response(server_response.content, self.parent_srv.namespace)[0]
