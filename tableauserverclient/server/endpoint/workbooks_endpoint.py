@@ -292,3 +292,35 @@ class Workbooks(Endpoint):
             new_workbook = WorkbookItem.from_response(server_response.content, self.parent_srv.namespace)[0]
             logger.info('Published {0} (ID: {1})'.format(filename, new_workbook.id))
             return new_workbook
+
+    @api(version="2.0")
+    def publish_from_memory(self, workbook_item, workbook_string, mode, connection_credentials=None):
+        if not hasattr(self.parent_srv.PublishMode, mode):
+            error = 'Invalid mode defined.'
+            raise ValueError(error)
+
+        # If name is not defined, grab the name from the file to publish
+        if not workbook_item.name:
+            raise ValueError('Please set workbook_item.name')
+
+        # Construct the url with the defined mode
+        url = "{0}?workbookType=twb".format(self.baseurl)
+        if mode == self.parent_srv.PublishMode.Overwrite:
+            url += '&{0}=true'.format(mode.lower())
+        elif mode == self.parent_srv.PublishMode.Append:
+            error = 'Workbooks cannot be appended.'
+            raise ValueError(error)
+
+        filename = workbook_item.name + '.twb'
+        logger.info('Publishing workbook {0} to server'.format(workbook_item.name))
+        xml_request, content_type = RequestFactory.Workbook.publish_req(workbook_item,
+                                                                        filename,
+                                                                        workbook_string,
+                                                                        connection_credentials)
+        with open("filexml_stable.txt", 'r') as f:
+            xml_request = f.read()
+        server_response = self.post_request(url, xml_request, content_type)
+        assert False, (server_response, '----', url, '----', self.parent_srv.auth_token, '----', content_type)
+        new_workbook = WorkbookItem.from_response(server_response.content)[0]
+        logger.info('Published workbook {0} (ID: {1})'.format(filename, new_workbook.id))
+        return new_workbook
