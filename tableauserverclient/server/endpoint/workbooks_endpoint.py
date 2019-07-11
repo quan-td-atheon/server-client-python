@@ -338,6 +338,6 @@ class Workbooks(Endpoint):
             xml_request = f.read()
         server_response = self.post_request(url, xml_request, content_type)
         assert False, (server_response, '----', url, '----', self.parent_srv.auth_token, '----', content_type)
-        new_workbook = WorkbookItem.from_response(server_response.content)[0]
+        new_workbook = WorkbookItem.from_response(server_response.content, self.parent_srv.namespace)[0]
         logger.info('Published workbook {0} (ID: {1})'.format(filename, new_workbook.id))
         return new_workbook

@@ -253,6 +253,6 @@ class Datasources(Endpoint):
                                                                           datasource_string,
                                                                           connection_credentials)
         server_response = self.post_request(url, xml_request, content_type)
-        new_datasource = DatasourceItem.from_response(server_response.content)[0]
+        new_datasource = DatasourceItem.from_response(server_response.content, self.parent_srv.namespace)[0]
         logger.info('Published datasource {0} (ID: {1})'.format(filename, new_datasource.id))
         return new_datasource
