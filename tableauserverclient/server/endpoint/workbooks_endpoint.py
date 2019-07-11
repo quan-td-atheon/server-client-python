@@ -136,6 +136,10 @@ class Workbooks(Endpoint):
         logger.info('Downloaded workbook to {0} (ID: {1})'.format(filepath, workbook_id))
         return os.path.abspath(filepath)
 
+    def download_to_memory(self, datasource_id, no_extract=False):
+        server_response = self.download(datasource_id, no_extract)
+        return server_response.content
+
     # Get all views of workbook
     @api(version="2.0")
     def populate_views(self, workbook_item, usage=False):
