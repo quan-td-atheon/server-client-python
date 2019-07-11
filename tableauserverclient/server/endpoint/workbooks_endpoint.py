@@ -104,18 +104,44 @@ class Workbooks(Endpoint):
                                                                                   connection_item.id))
         return connection
 
+    @api(version="2.0")
+    @parameter_added_in(no_extract='2.5')
+    def _download(self, workbook_id, no_extract=False):
+        if not workbook_id:
+            error = "Workbook ID undefined."
+            raise ValueError(error)
+        url = "{0}/{1}/content".format(self.baseurl, workbook_id)
+
+        if no_extract:
+            url += "?includeExtract=False"
+
+        return self.get_request(url, parameters={"stream": True})
+
     # Download workbook contents with option of passing in filepath
     @api(version="2.0")
     @parameter_added_in(no_extract='2.5')
     @parameter_added_in(include_extract='2.5')
     def download(self, workbook_id, filepath=None, include_extract=True, no_extract=None):
-        server_response = self._download(workbook_id, no_extract)
-        _, params = cgi.parse_header(server_response.headers['Content-Disposition'])
-        filename = os.path.basename(params['filename'])
-        if filepath is None:
-            filepath = filename
-        elif os.path.isdir(filepath):
-            filepath = os.path.join(filepath, filename)
+        if not workbook_id:
+            error = "Workbook ID undefined."
+            raise ValueError(error)
+        url = "{0}/{1}/content".format(self.baseurl, workbook_id)
+
+        if no_extract is False or no_extract is True:
+            import warnings
+            warnings.warn('no_extract is deprecated, use include_extract instead.', DeprecationWarning)
+            include_extract = not no_extract
+
+        if not include_extract:
+            url += "?includeExtract=False"
+
+        with closing(self.get_request(url, parameters={"stream": True})) as server_response:
+            _, params = cgi.parse_header(server_response.headers['Content-Disposition'])
+            filename = to_filename(os.path.basename(params['filename']))
+            if filepath is None:
+                filepath = filename
+            elif os.path.isdir(filepath):
+                filepath = os.path.join(filepath, filename)
 
             with open(filepath, 'wb') as f:
                 for chunk in server_response.iter_content(1024):  # 1KB
@@ -124,7 +150,7 @@ class Workbooks(Endpoint):
         return os.path.abspath(filepath)
 
     def download_to_memory(self, workbook_id, no_extract=False):
-        server_response = self.download(workbook_id, no_extract)
+        server_response = self._download(workbook_id, no_extract)
         return server_response.content
 
     # Get all views of workbook

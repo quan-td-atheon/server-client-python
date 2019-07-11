@@ -79,27 +79,54 @@ class Datasources(Endpoint):
         self.delete_request(url)
         logger.info('Deleted single datasource (ID: {0})'.format(datasource_id))
 
+    @api(version="2.0")
+    @parameter_added_in(no_extract='2.5')
+    def _download(self, datasource_id, no_extract=False):
+        if not datasource_id:
+            error = "Datasource ID undefined."
+            raise ValueError(error)
+        url = "{0}/{1}/content".format(self.baseurl, datasource_id)
+
+        if no_extract:
+            url += "?includeExtract=False"
+
+        return self.get_request(url, parameters={'stream': True})
+
     # Download 1 datasource by id
     @api(version="2.0")
     @parameter_added_in(no_extract='2.5')
     @parameter_added_in(include_extract='2.5')
     def download(self, datasource_id, filepath=None, include_extract=True, no_extract=None):
-        server_response = self._download(datasource_id, no_extract)
-        _, params = cgi.parse_header(server_response.headers['Content-Disposition'])
-        filename = os.path.basename(params['filename'])
-        if filepath is None:
-            filepath = filename
-        elif os.path.isdir(filepath):
-            filepath = os.path.join(filepath, filename)
+        if not datasource_id:
+            error = "Datasource ID undefined."
+            raise ValueError(error)
+        url = "{0}/{1}/content".format(self.baseurl, datasource_id)
+
+        if no_extract is False or no_extract is True:
+            import warnings
+            warnings.warn('no_extract is deprecated, use include_extract instead.', DeprecationWarning)
+            include_extract = not no_extract
+
+        if not include_extract:
+            url += "?includeExtract=False"
+
+        with closing(self.get_request(url, parameters={'stream': True})) as server_response:
+            _, params = cgi.parse_header(server_response.headers['Content-Disposition'])
+            filename = to_filename(os.path.basename(params['filename']))
+            if filepath is None:
+                filepath = filename
+            elif os.path.isdir(filepath):
+                filepath = os.path.join(filepath, filename)
 
             with open(filepath, 'wb') as f:
                 for chunk in server_response.iter_content(1024):  # 1KB
                     f.write(chunk)
+
         logger.info('Downloaded datasource to {0} (ID: {1})'.format(filepath, datasource_id))
         return os.path.abspath(filepath)
 
     def download_to_memory(self, datasource_id, no_extract=False):
-        server_response = self.download(datasource_id, no_extract)
+        server_response = self._download(datasource_id, no_extract)
         return server_response.content
 
     # Update datasource
